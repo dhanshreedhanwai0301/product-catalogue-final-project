@@ -1,23 +1,25 @@
 
-"""Unit tests for the Product model."""
+"""Unit tests for Product model operations."""
 
 import unittest
 
+from service import create_app
 from service.models import db, Product, Category
 from tests.factories import ProductFactory
 
 
 class TestProduct(unittest.TestCase):
-    """Test cases for Product model operations."""
+    """Test Product model operations."""
 
     def setUp(self):
-        """Create a fresh database for each test."""
-        self.app = __import__("flask").Flask(__name__)
-        self.app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-        self.app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-        db.init_app(self.app)
+        """Create an isolated test application and database."""
+        self.app = create_app({
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        })
         self.app_context = self.app.app_context()
         self.app_context.push()
+        db.drop_all()
         db.create_all()
 
     def tearDown(self):
@@ -65,8 +67,7 @@ class TestProduct(unittest.TestCase):
         db.session.add_all(ProductFactory.create_batch(3))
         db.session.commit()
 
-        products = Product.query.all()
-        self.assertEqual(len(products), 3)
+        self.assertEqual(Product.query.count(), 3)
 
     def test_find_by_name(self):
         """It should find products by name."""
