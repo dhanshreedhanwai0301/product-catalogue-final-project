@@ -22,7 +22,9 @@ def step_select_product(context, name):
 
     for row in rows:
         if name in row.text:
-            row.find_element(By.XPATH, './/button[normalize-space()="Read"]').click()
+            row.find_element(
+                By.XPATH, './/button[normalize-space()="Read"]'
+            ).click()
             return
 
     raise AssertionError(f"Product '{name}' was not found")
@@ -36,7 +38,9 @@ def step_update_product(context, old_name, new_name):
 
     for row in rows:
         if old_name in row.text:
-            row.find_element(By.XPATH, './/button[normalize-space()="Edit"]').click()
+            row.find_element(
+                By.XPATH, './/button[normalize-space()="Edit"]'
+            ).click()
             break
     else:
         raise AssertionError(f"Product '{old_name}' was not found")
@@ -46,12 +50,15 @@ def step_update_product(context, old_name, new_name):
     )
     name_input.clear()
     name_input.send_keys(new_name)
+
     context.browser.find_element(
         By.CSS_SELECTOR, '#product-form button[type="submit"]'
     ).click()
 
     WebDriverWait(context.browser, 10).until(
-        lambda driver: new_name in driver.find_element(By.ID, "products").text
+        lambda driver: new_name in driver.find_element(
+            By.ID, "products"
+        ).text
     )
 
 
@@ -66,10 +73,14 @@ def step_delete_product(context, name):
             row.find_element(
                 By.XPATH, './/button[normalize-space()="Delete"]'
             ).click()
+
             WebDriverWait(context.browser, 10).until(
-                lambda driver: name not in driver.find_element(
-                    By.ID, "products"
-                ).text
+                lambda driver: all(
+                    name not in product_row.text
+                    for product_row in driver.find_elements(
+                        By.CSS_SELECTOR, "#products tr"
+                    )
+                )
             )
             return
 
@@ -91,6 +102,7 @@ def step_search_by_name(context, name):
     )
     search.clear()
     search.send_keys(name)
+
     context.browser.find_element(
         By.CSS_SELECTOR, '#search-form button[type="submit"]'
     ).click()
@@ -99,10 +111,11 @@ def step_search_by_name(context, name):
 @when('I search products by category "{category}"')
 def step_search_by_category(context, category):
     """Filter products by category."""
-    select = Select(context.browser.find_element(
+    category_select = Select(context.browser.find_element(
         By.CSS_SELECTOR, '#search-form select[name="category"]'
     ))
-    select.select_by_value(category)
+    category_select.select_by_value(category)
+
     context.browser.find_element(
         By.CSS_SELECTOR, '#search-form button[type="submit"]'
     ).click()
@@ -111,10 +124,11 @@ def step_search_by_category(context, category):
 @when('I search products by availability "{available}"')
 def step_search_by_availability(context, available):
     """Filter products by availability."""
-    select = Select(context.browser.find_element(
+    availability_select = Select(context.browser.find_element(
         By.CSS_SELECTOR, '#search-form select[name="available"]'
     ))
-    select.select_by_value(available.lower())
+    availability_select.select_by_value(available.lower())
+
     context.browser.find_element(
         By.CSS_SELECTOR, '#search-form button[type="submit"]'
     ).click()
@@ -122,7 +136,7 @@ def step_search_by_availability(context, available):
 
 @then('I should see "{text}"')
 def step_should_see(context, text):
-    """Verify text appears in the page."""
+    """Verify that text appears on the page."""
     WebDriverWait(context.browser, 10).until(
         lambda driver: text in driver.find_element(
             By.TAG_NAME, "body"
@@ -132,10 +146,22 @@ def step_should_see(context, text):
 
 @then('I should not see "{text}"')
 def step_should_not_see(context, text):
-    """Verify text is absent from the product table."""
+    """Verify that text is absent from the product table."""
     WebDriverWait(context.browser, 10).until(
         lambda driver: all(
             text not in row.text
-            for row in driver.find_elements(By.CSS_SELECTOR, "#products tr")
+            for row in driver.find_elements(
+                By.CSS_SELECTOR, "#products tr"
+            )
         )
+    )
+
+
+@then('I should see the message "{message}"')
+def step_should_see_message(context, message):
+    """Verify that a specific message is displayed."""
+    WebDriverWait(context.browser, 10).until(
+        lambda driver: message in driver.find_element(
+            By.ID, "message"
+        ).text
     )
