@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Catalogue Admin</title>
+</head>
+<body>
+    <h1>Product Catalogue</h1>
+
+    <form id="search-form">
+        <input name="name" placeholder="Search by name">
+        <select name="category">
+            <option value="">All categories</option>
+            <option value="TOOLS">TOOLS</option>
+            <option value="CLOTHS">CLOTHS</option>
+            <option value="FOOD">FOOD</option>
+            <option value="HOUSEWARES">HOUSEWARES</option>
+            <option value="AUTOMOTIVE">AUTOMOTIVE</option>
+        </select>
+        <select name="available">
+            <option value="">All availability</option>
+            <option value="true">true</option>
+            <option value="false">false</option>
+        </select>
+        <button type="submit">Search</button>
+        <button type="button" id="list-all">List All</button>
+    </form>
+
+    <h2>Add or edit product</h2>
+    <form id="product-form">
+        <input type="hidden" name="id">
+        <input name="name" placeholder="Product name" required>
+        <input name="description" placeholder="Description">
+        <input name="price" type="number" step="0.01" placeholder="Price" required>
+        <select name="category" required>
+            <option value="TOOLS">TOOLS</option>
+            <option value="CLOTHS">CLOTHS</option>
+            <option value="FOOD">FOOD</option>
+            <option value="HOUSEWARES">HOUSEWARES</option>
+            <option value="AUTOMOTIVE">AUTOMOTIVE</option>
+            <option value="UNKNOWN">UNKNOWN</option>
+        </select>
+        <select name="available">
+            <option value="true">Available</option>
+            <option value="false">Unavailable</option>
+        </select>
+        <button type="submit">Save</button>
+    </form>
+
+    <p id="message"></p>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th><th>Name</th><th>Description</th>
+                <th>Price</th><th>Category</th><th>Available</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="products"></tbody>
+    </table>
+
+    <script>
+        const message = document.getElementById("message");
+        const rows = document.getElementById("products");
+        const form = document.getElementById("product-form");
+
+        async function loadProducts(params = "") {
+            const response = await fetch("/products" + params);
+            const products = await response.json();
+            rows.replaceChildren();
+
+            products.forEach(product => {
+                const row = document.createElement("tr");
+                [
+                    product.id, product.name, product.description,
+                    product.price, product.category, product.available
+                ].forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value ?? "";
+                    row.appendChild(cell);
+                });
+
+                const actions = document.createElement("td");
+                const edit = document.createElement("button");
+                edit.textContent = "Edit";
+                edit.onclick = () => {
+                    Object.keys(product).forEach(key => {
+                        if (form.elements[key]) {
+                            form.elements[key].value = product[key];
+                        }
+                    });
+                };
+
+                const remove = document.createElement("button");
+                remove.textContent = "Delete";
+                remove.onclick = async () => {
+                    const result = await fetch("/products/" + product.id, {
+                        method: "DELETE"
+                    });
+                    if (result.ok) {
+                        message.textContent = "Product deleted";
+                        loadProducts();
+                    }
+                };
+
+                const read = document.createElement("button");
+                read.textContent = "Read";
+                read.onclick = async () => {
+                    const result = await fetch("/products/" + product.id);
+                    const item = await result.json();
+                    message.textContent = JSON.stringify(item);
+                };
+
+                actions.append(read, edit, remove);
+                row.appendChild(actions);
+                rows.appendChild(row);
+            });
+        }
+
+        form.onsubmit = async event => {
+            event.preventDefault();
+            const data = Object.fromEntries(new FormData(form));
+            const id = data.id;
+            delete data.id;
+            data.price = Number(data.price);
+            data.available = data.available === "true";
+
+            const response = await fetch(
+                id ? "/products/" + id : "/products",
+                {
+                    method: id ? "PUT" : "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(data)
+                }
+            );
+
+            message.textContent = response.ok ? "Product saved" : "Save failed";
+            if (response.ok) {
+                form.reset();
+                loadProducts();
+            }
+        };
+
+        document.getElementById("search-form").onsubmit = event => {
+            event.preventDefault();
+            const data = new FormData(event.target);
+            const params = new URLSearchParams();
+            for (const [key, value] of data) {
+                if (value) params.set(key, value);
+            }
+            loadProducts("?" + params.toString());
+        };
+
+        document.getElementById("list-all").onclick = () => loadProducts();
+
+        loadProducts();
+    </script>
+</body>
+</html>
