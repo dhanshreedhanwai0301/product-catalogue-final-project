@@ -1,4 +1,3 @@
-
 """Behave environment setup for the Product Catalogue."""
 
 import threading
@@ -6,7 +5,7 @@ import time
 
 from werkzeug.serving import make_server
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.options import Options
 
 from service import create_app
 from service.models import db
@@ -28,11 +27,9 @@ def before_all(context):
     time.sleep(1)
 
     options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("-headless")
 
-    context.browser = webdriver.Chrome(options=options)
+    context.browser = webdriver.Firefox(options=options)
     context.base_url = "http://127.0.0.1:5000"
 
 
