@@ -16,32 +16,35 @@ def wait_for_products(context):
 
 
 def load_product_list(context, name):
-    """Load products and report what the browser actually sees."""
-    wait = WebDriverWait(context.browser, 10)
-    wait_for_products(context)
+"""Load products and wait until the requested row is rendered."""
+wait = WebDriverWait(context.browser, 10)
+wait_for_products(context)
 
-    wait.until(
-        EC.element_to_be_clickable((By.ID, "list-all"))
-    ).click()
+# Trigger a fresh request for the complete product list.
+wait.until(
+    EC.element_to_be_clickable((By.ID, "list-all"))
+).click()
 
-    time.sleep(1)
+# Wait for the asynchronous API request and table rendering.
+def find_row(driver):
+    rows = driver.find_elements(By.CSS_SELECTOR, "#products tr")
+    for row in rows:
+        if name in row.text:
+            return row
+    return False
 
+try:
+    return wait.until(find_row)
+except Exception as exc:
     rows = context.browser.find_elements(
         By.CSS_SELECTOR, "#products tr"
     )
     visible_rows = [row.text for row in rows]
-
-    print("DEBUG page URL:", context.browser.current_url)
-    print("DEBUG table rows:", visible_rows)
-
-    for row in rows:
-        if name in row.text:
-            return row
-
     raise AssertionError(
-        f"Product '{name}' was not found. Visible rows: {visible_rows}"
-    )
-
+        f"Product '{name}' was not found. "
+        f"Visible rows: {visible_rows}. "
+        f"Page URL: {context.browser.current_url}"
+    ) from exc
 
 @when('I select the product "{name}"')
 def step_select_product(context, name):
