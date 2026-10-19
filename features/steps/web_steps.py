@@ -14,20 +14,22 @@ def wait_for_products(context):
 
 
 def load_product_list(context, name):
-    """Refresh the product list and wait for a matching product row."""
-    wait = WebDriverWait(context.browser, 10)
+"""Load the product list and wait for the requested row."""
+wait = WebDriverWait(context.browser, 10)
+wait_for_products(context)
+
+def find_row(driver):
+    for row in driver.find_elements(By.CSS_SELECTOR, "#products tr"):
+        if name in row.text:
+            return row
+    return False
+
+try:
+    return wait.until(find_row)
+except Exception:
+    context.browser.get(context.base_url)
     wait_for_products(context)
-
-    wait.until(
-        EC.element_to_be_clickable((By.ID, "list-all"))
-    ).click()
-
-    def find_row(driver):
-        for row in driver.find_elements(By.CSS_SELECTOR, "#products tr"):
-            if name in row.text:
-                return row
-        return False
-
+    context.browser.find_element(By.ID, "list-all").click()
     return wait.until(find_row)
 
 
