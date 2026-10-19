@@ -13,41 +13,42 @@ def wait_for_products(context):
     )
 
 
-@when('I select the product "{name}"')
-def step_select_product(context, name):
-    """Read a product using its Read button."""
+def load_product_list(context, name):
+    """Refresh the product list and wait for a matching product row."""
     wait = WebDriverWait(context.browser, 10)
     wait_for_products(context)
 
-    rows = context.browser.find_elements(
-        By.CSS_SELECTOR, "#products tr"
+    wait.until(
+        EC.element_to_be_clickable((By.ID, "list-all"))
+    ).click()
+
+    def find_row(driver):
+        for row in driver.find_elements(By.CSS_SELECTOR, "#products tr"):
+            if name in row.text:
+                return row
+        return False
+
+    return wait.until(find_row)
+
+
+@when('I select the product "{name}"')
+def step_select_product(context, name):
+    """Read a product using its Read button."""
+    row = load_product_list(context, name)
+
+    button = row.find_element(
+        By.XPATH, './/button[normalize-space()="Read"]'
     )
-
-    for row in rows:
-        if name in row.text:
-            button = row.find_element(
-                By.XPATH, './/button[normalize-space()="Read"]'
-            )
-            wait.until(EC.element_to_be_clickable(button)).click()
-            return
-
-    raise AssertionError(f"Product '{name}' was not found")
+    WebDriverWait(context.browser, 10).until(
+        EC.element_to_be_clickable(button)
+    ).click()
 
 
 @when('I update the product "{old_name}" name to "{new_name}"')
 def step_update_product(context, old_name, new_name):
     """Update a product using the admin form."""
     wait = WebDriverWait(context.browser, 10)
-    wait_for_products(context)
-
-    row_xpath = (
-        f'//table[@id="products"]//tr'
-        f'[.//*[contains(normalize-space(), "{old_name}")]]'
-    )
-
-    row = wait.until(
-        EC.presence_of_element_located((By.XPATH, row_xpath))
-    )
+    row = load_product_list(context, old_name)
 
     edit_button = row.find_element(
         By.XPATH, './/button[normalize-space()="Edit"]'
@@ -71,10 +72,8 @@ def step_update_product(context, old_name, new_name):
 
     wait.until(
         lambda driver: any(
-            new_name in product_row.text
-            for product_row in driver.find_elements(
-                By.CSS_SELECTOR, "#products tr"
-            )
+            new_name in row.text
+            for row in driver.find_elements(By.CSS_SELECTOR, "#products tr")
         )
     )
 
@@ -83,16 +82,7 @@ def step_update_product(context, old_name, new_name):
 def step_delete_product(context, name):
     """Delete a product using its Delete button."""
     wait = WebDriverWait(context.browser, 10)
-    wait_for_products(context)
-
-    row_xpath = (
-        f'//table[@id="products"]//tr'
-        f'[.//*[contains(normalize-space(), "{name}")]]'
-    )
-
-    row = wait.until(
-        EC.presence_of_element_located((By.XPATH, row_xpath))
-    )
+    row = load_product_list(context, name)
 
     delete_button = row.find_element(
         By.XPATH, './/button[normalize-space()="Delete"]'
@@ -100,6 +90,4 @@ def step_delete_product(context, name):
     wait.until(EC.element_to_be_clickable(delete_button)).click()
 
     wait.until(
-        lambda driver: all(
-            name not in product_row.text
-            for product_row in driver.find_elements
+        lambda driver
