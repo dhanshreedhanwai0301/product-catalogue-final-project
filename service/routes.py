@@ -1,12 +1,44 @@
 
 """REST API routes for the Product Catalogue."""
 
-from flask import jsonify, request
+from flask import jsonify, request, render_template
 from service.models import db, Product, Category
 
 
 def register_routes(app):
     """Register product endpoints on the Flask application."""
+
+    @app.route("/")
+    def home():
+        """Display the product administration interface."""
+        return render_template("index.html")
+
+    @app.route("/products", methods=["POST"])
+    def create_product():
+        """Create a new product."""
+        data = request.get_json(silent=True) or {}
+
+        if not data.get("name"):
+            return jsonify(error="Product name is required"), 400
+
+        try:
+            category = Category[
+                data.get("category", "UNKNOWN").upper()
+            ]
+        except (KeyError, AttributeError):
+            return jsonify(error="Invalid category"), 400
+
+        product = Product(
+            name=data["name"],
+            description=data.get("description", ""),
+            price=data.get("price", 0),
+            available=data.get("available", True),
+            category=category,
+        )
+
+        db.session.add(product)
+        db.session.commit()
+        return jsonify(product.serialize()), 201
 
     @app.route("/products/<int:product_id>", methods=["GET"])
     def read_product(product_id):
@@ -18,7 +50,7 @@ def register_routes(app):
 
     @app.route("/products/<int:product_id>", methods=["PUT"])
     def update_product(product_id):
-        """Update a product."""
+        """Update an existing product."""
         product = db.session.get(Product, product_id)
         if product is None:
             return jsonify(error="Product not found"), 404
@@ -44,7 +76,7 @@ def register_routes(app):
 
     @app.route("/products/<int:product_id>", methods=["DELETE"])
     def delete_product(product_id):
-        """Delete a product."""
+        """Delete a product by ID."""
         product = db.session.get(Product, product_id)
         if product is None:
             return jsonify(error="Product not found"), 404
